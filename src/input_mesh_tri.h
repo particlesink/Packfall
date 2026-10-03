@@ -95,10 +95,10 @@ class InputMeshTri : protected Input
         // cylinder: radius, zsize
         // pipe: inner_radius, outer_radius, zsize
         // disk: radius
-        // plane: size
+        // plane: xsize, ysize (ysize defaults to xsize)
         double dvalues[3];
-        // cylinder/pipe/disk: number_of_segments
-        int ivalues[1];
+        // cylinder/pipe/disk: number_of_segments; plane: x and y subdivisions
+        int ivalues[2];
     };
 
 

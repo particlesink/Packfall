@@ -56,6 +56,7 @@
 #include "domain.h"
 #include <cstdint>
 #include <cmath>
+#include <vector>
 #include "vector_liggghts.h"
 #include "input_mesh_tri.h"
 #include "tri_mesh.h"
@@ -1122,29 +1123,49 @@ void InputMeshTri::generate_disk(const GeneratorParameters * params, class TriMe
 
 void InputMeshTri::generate_plane(const GeneratorParameters * params, class TriMesh *mesh, class Region *region){
     unsigned int num_of_facets = 0;
-    double size = 0;
+    double xsize = 0, ysize = 0;
+    int xresolution = 1, yresolution = 1;
     // master node
     if (me == 0) {
-        num_of_facets = 2;
-        size = params->dvalues[0] / 2.0;
+        xsize = params->dvalues[0];
+        ysize = params->dvalues[1];
+        xresolution = params->ivalues[0];
+        yresolution = params->ivalues[1];
+        num_of_facets = 2 * xresolution * yresolution;
 
-        VERIFY(size > 0);
+        VERIFY(xsize > 0);
+        VERIFY(ysize > 0);
     }
 
-    // communicate number of triangles
+    // communicate the shape, then give every rank the same sequence of facets
     MPI_Bcast(&num_of_facets, 1, MPI_INT, 0, world);
+    MPI_Bcast(&xsize, 1, MPI_DOUBLE, 0, world);
+    MPI_Bcast(&ysize, 1, MPI_DOUBLE, 0, world);
+    MPI_Bcast(&xresolution, 1, MPI_INT, 0, world);
+    MPI_Bcast(&yresolution, 1, MPI_INT, 0, world);
 
     unsigned int count = 0;
-
-    broadcast_and_add_triangle(mesh, region, &count,
-                               size, size,  0,
-                               -size, size, 0,
-                               size, -size, 0);
-
-    broadcast_and_add_triangle(mesh, region, &count,
-                               size, -size, 0,
-                               -size, size, 0,
-                               -size, -size, 0);
+    const double xspacing = xsize / xresolution;
+    const double yspacing = ysize / yresolution;
+    std::vector<double> xcoord(xresolution+1), ycoord(yresolution+1);
+    for (int ix = 0; ix <= xresolution; ++ix) xcoord[ix] = -xsize/2.0 + ix*xspacing;
+    for (int iy = 0; iy <= yresolution; ++iy) ycoord[iy] = -ysize/2.0 + iy*yspacing;
+    for (int iy = 0; iy < yresolution; ++iy) {
+        for (int ix = 0; ix < xresolution; ++ix) {
+            const double x0 = xcoord[ix];
+            const double x1 = xcoord[ix+1];
+            const double y0 = ycoord[iy];
+            const double y1 = ycoord[iy+1];
+            broadcast_and_add_triangle(mesh, region, &count,
+                                       x1, y1, 0,
+                                       x0, y1, 0,
+                                       x1, y0, 0);
+            broadcast_and_add_triangle(mesh, region, &count,
+                                       x1, y0, 0,
+                                       x0, y1, 0,
+                                       x0, y0, 0);
+        }
+    }
 
     if(me == 0){
         fprintf(screen, "plane mesh generated: %u triangels\n", count);

@@ -1,0 +1,30 @@
+solid fabric_tent
+  facet normal 0 0 1
+    outer loop
+      vertex -0.05 -0.05 0.04
+      vertex  0.05 -0.05 0.04
+      vertex  0.00  0.00 0.005
+    endloop
+  endfacet
+  facet normal 0 0 1
+    outer loop
+      vertex  0.05 -0.05 0.04
+      vertex  0.05  0.05 0.04
+      vertex  0.00  0.00 0.005
+    endloop
+  endfacet
+  facet normal 0 0 1
+    outer loop
+      vertex  0.05  0.05 0.04
+      vertex -0.05  0.05 0.04
+      vertex  0.00  0.00 0.005
+    endloop
+  endfacet
+  facet normal 0 0 1
+    outer loop
+      vertex -0.05  0.05 0.04
+      vertex -0.05 -0.05 0.04
+      vertex  0.00  0.00 0.005
+    endloop
+  endfacet
+endsolid fabric_tent

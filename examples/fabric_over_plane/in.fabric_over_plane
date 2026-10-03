@@ -1,0 +1,46 @@
+# A 12 x 12 damped fabric lattice settles under gravity onto a fixed primitive
+# z-plane. Its perimeter is pinned; only the 121 interior nodes can move.
+
+atom_style      granular
+atom_modify     map array
+boundary        m m m
+newton          off
+communicate     single vel yes
+units           si
+
+region          domain block -0.10 0.10 -0.10 0.10 -0.01 0.10 units box
+create_box      1 domain
+
+# One inert particle avoids the zero-atom binning path. It stays well above
+# the demonstration and the primitive wall is otherwise unused by particles.
+create_atoms    1 single 0.08 0.08 0.08
+set             atom 1 diameter 0.002 density 2500
+
+neighbor        0.003 bin
+neigh_modify    delay 0
+
+fix             m1 all property/global youngsModulus peratomtype 1.e7
+fix             m2 all property/global poissonsRatio peratomtype 0.30
+fix             m3 all property/global coefficientRestitution peratomtypepair 1 0.2
+fix             m4 all property/global coefficientFriction peratomtypepair 1 0.5
+pair_style      gran model hertz tangential history
+pair_coeff      * *
+
+timestep        1.0e-4
+
+# The plane generator creates 288 triangles and 169 shared nodes. Boundary
+# edges pin the 48 perimeter nodes. The interior settles and drapes onto z=0.
+fix fabric all mesh/surface/fabric generate plane 0.10 resolution 12 type 1 &
+    move 0.0 0.0 0.04 node_mass 1.0e-5 spring 0.01 damping 0.002 &
+    gravity 0.0 0.0 -9.81 support_zplane 0.0 pin_boundary yes
+
+# This is the matching fixed primitive used by the particle solver. The
+# initial fabric support is deliberately the same plane.
+fix floor all wall/gran model hertz tangential history primitive type 1 zplane 0.0
+
+fix integrate all nve/sphere
+
+dump fabric_mesh all mesh/stl 500 post/fabric_*.stl fabric
+thermo          500
+thermo_style    custom step atoms
+run             8000

@@ -59,6 +59,7 @@
 #include "fix_contact_history.h"
 #include "fix_neighlist_mesh.h"
 #include "tri_mesh_deform.h"
+#include "tri_mesh_fabric.h"
 #include "fix_property_global.h"
 #include "fix_move_mesh.h"
 #include "tri_mesh_planar.h"
@@ -344,7 +345,9 @@ void FixMesh::create_mesh(const char *mesh_file_or_generator_type, bool is_fix)
 {
     if(strncmp(style,"mesh/surface", 12) == 0)
     {
-        if(strcmp(style,"mesh/surface/stress/deform") == 0)
+        if(strcmp(style,"mesh/surface/fabric") == 0)
+            mesh_ = new TriMeshFabric(lmp);
+        else if(strcmp(style,"mesh/surface/stress/deform") == 0)
             mesh_ = new TriMeshDeformable(lmp);
         else if(strcmp(style,"mesh/surface/planar") == 0)
             mesh_ = new TriMeshPlanar(lmp);
@@ -405,7 +408,9 @@ void FixMesh::create_mesh(const char *mesh_file_or_generator_type, bool is_fix)
 void FixMesh::create_mesh_restart(const char *mesh_file_or_generator_type)
 {
     
-    if(strcmp(style, "mesh/surface/stress/deform") == 0)
+    if(strcmp(style, "mesh/surface/fabric") == 0)
+        mesh_ = new TriMeshFabric(lmp);
+    else if(strcmp(style, "mesh/surface/stress/deform") == 0)
         mesh_ = new TriMeshDeformable(lmp);
     else if(strcmp(style, "mesh/surface/planar") == 0)
         mesh_ = new TriMeshPlanar(lmp);
@@ -857,7 +862,23 @@ void FixMesh::parse_and_consume_generator_args(int *start_arg, int narg, char **
 
         case InputMeshTri::GeneratedType::PLANE:{
             ++arg;
-            GET_FLOAT(gen_params_.dvalues[0], "size");
+            GET_FLOAT(gen_params_.dvalues[0], "xsize");
+            gen_params_.dvalues[1] = gen_params_.dvalues[0];
+            gen_params_.ivalues[0] = gen_params_.ivalues[1] = 1;
+            char *next;
+            strtod(args[arg], &next);
+            if (arg < narg - 1 && next != args[arg] && *next == '\0') {
+                GET_FLOAT(gen_params_.dvalues[1], "ysize");
+            }
+            if (arg < narg - 1 && strcmp(args[arg], "resolution") == 0) {
+                ++arg;
+                GET_INT(gen_params_.ivalues[0], "x resolution");
+                gen_params_.ivalues[1] = gen_params_.ivalues[0];
+                strtod(args[arg], &next);
+                if (arg < narg - 1 && next != args[arg] && *next == '\0') {
+                    GET_INT(gen_params_.ivalues[1], "y resolution");
+                }
+            }
         } break;
 
         case InputMeshTri::GeneratedType::UNKNOWN:
