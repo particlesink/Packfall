@@ -9,9 +9,17 @@ __pycache__/
 build_model_generation.log
 tests/artifacts/
 tests/__pycache__/
+tests/**/state.restart
+examples/artifacts/
 examples/**/post/*.vtk
 examples/**/post/*.vtp
 examples/**/post/*.txt
+examples/**/post/*.csv
+examples/**/post/*.dump
+examples/**/post/*.restart
 examples/**/*.vtk
 examples/**/*.vtp
+examples/**/*.avi
 examples/**/log.liggghts
+examples/**/fpf_mesh_*.stl
+*.orig

@@ -15,8 +15,12 @@ This directory contains the initial Packfall regression/smoke test harness.
 From the repository root:
 
 ```sh
-python tests/run.py
+make test
 ```
+
+This builds the Linux executable and runs every test declared in
+`tests/manifest.json`. To run tests and the registered example integration
+checks together, use `make check`.
 
 Optional arguments:
 
@@ -27,6 +31,12 @@ python tests/run.py --case superquadric_orientation_modes
 python tests/run.py --group smoke
 python tests/run.py --group regression
 python tests/run.py --group validation-failure
+```
+
+The equivalent filtered Make invocation is:
+
+```sh
+make test TEST_ARGS='--group smoke'
 ```
 
 The runner writes captured logs to `tests/artifacts/`.

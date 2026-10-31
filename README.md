@@ -30,6 +30,46 @@ The default release path currently targets sphere, SPH, and SPH-DEM workflows.
 Superquadric support remains work in progress and is not part of the default
 build-and-smoke gate yet.
 
+## Automated verification
+### Sanitizer build
+
+The Linux sanitizer build is isolated under `build/sanitize` and enables
+AddressSanitizer and UndefinedBehaviorSanitizer with debug symbols and frame
+pointers. It is intended for local investigation and CI smoke checks, not
+performance measurements:
+
+```sh
+make sanitize
+make test-sanitize
+make check-sanitize
+```
+
+`test-sanitize` runs the test manifest against `build/sanitize/packfall`.
+`check-sanitize` also runs the registered examples. Both fail on ASan leaks,
+ASan memory errors, and UBSan findings. Pass `TEST_ARGS` or `EXAMPLE_ARGS` to
+focus the run, for example `make test-sanitize TEST_ARGS='--group smoke'`.
+
+
+Run the complete executable-based verification suite from the repository root:
+
+```sh
+make check
+```
+
+`make check` builds the Linux executable once per suite, then runs every case
+registered in `tests/manifest.json` and `examples/manifest.json`. The commands
+can also be run independently:
+
+```sh
+make test
+make examples
+```
+
+Use `TEST_ARGS` or `EXAMPLE_ARGS` to pass runner filters, for example
+`make test TEST_ARGS='--group smoke'`. Captured output is saved under
+`tests/artifacts/` and `examples/artifacts/`; generated simulation files can be
+removed with `make clean-tests` or `make clean-examples`.
+
 ## Documentation Status
 
 Packfall currently ships a mix of validated workflows, inherited examples, and

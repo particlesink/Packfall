@@ -7,6 +7,9 @@ BUILD_DIR ?= ../build/linux
 OBJ_DIR := $(BUILD_DIR)/obj
 DEP_DIR := $(BUILD_DIR)/dep
 STUB_DIR := $(BUILD_DIR)/stubs
+PIC_OBJ_DIR := $(BUILD_DIR)/obj-shlib
+PIC_DEP_DIR := $(BUILD_DIR)/dep-shlib
+PIC_STUB_DIR := $(BUILD_DIR)/stubs-shlib
 EXE := $(BUILD_DIR)/$(TARGET)
 STATIC_LIB := $(BUILD_DIR)/lib$(TARGET).a
 SHARED_LIB := $(BUILD_DIR)/lib$(TARGET).so
@@ -15,7 +18,7 @@ HEADER_STAMP := $(BUILD_DIR)/.headers.stamp
 AR ?= ar
 OPT ?= -O2
 STD ?= -std=gnu++17
-WARN ?= -Wall -Wextra -Wno-unused-result
+WARN ?= -Wall -Wextra -Wno-unused-result -Wno-unused-parameter
 PICFLAGS ?= -fPIC
 SHLIBFLAGS ?= -shared
 
@@ -43,6 +46,7 @@ MPI_CPPFLAGS :=
 MPI_LDFLAGS :=
 MPI_LDLIBS :=
 STUB_TARGET :=
+PIC_STUB_TARGET :=
 
 ifeq ($(USE_MPI),1)
 CXX := $(MPICXX)
@@ -58,16 +62,26 @@ MPI_LDLIBS += -lmpi_stubs
 STUB_TARGET := $(STUB_DIR)/libmpi_stubs.a
 endif
 
+ifeq ($(USE_MPI),0)
+PIC_STUB_TARGET := $(PIC_STUB_DIR)/libmpi_stubs.a
+endif
+
 CPPFLAGS += -I. $(FEATURE_DEFS) $(MPI_CPPFLAGS) $(EXTRA_CPPFLAGS)
 CXXFLAGS += $(STD) $(OPT) $(WARN) $(EXTRA_CXXFLAGS)
 LDFLAGS += $(MPI_LDFLAGS) $(EXTRA_LDFLAGS)
 LDLIBS += $(MPI_LDLIBS) $(EXTRA_LDLIBS)
+SHLIB_LDFLAGS := $(filter-out -L$(STUB_DIR),$(LDFLAGS))
+ifeq ($(USE_MPI),0)
+SHLIB_LDFLAGS += -L$(PIC_STUB_DIR)
+endif
 
 SRC := $(wildcard *.cpp)
 OBJ := $(patsubst %.cpp,$(OBJ_DIR)/%.o,$(SRC))
 LIB_SRC := $(filter-out main.cpp,$(SRC))
 LIB_OBJ := $(patsubst %.cpp,$(OBJ_DIR)/%.o,$(LIB_SRC))
 DEP := $(patsubst %.cpp,$(DEP_DIR)/%.d,$(SRC))
+PIC_LIB_OBJ := $(patsubst %.cpp,$(PIC_OBJ_DIR)/%.o,$(LIB_SRC))
+PIC_LIB_DEP := $(patsubst %.cpp,$(PIC_DEP_DIR)/%.d,$(LIB_SRC))
 
 all: $(EXE)
 lib: $(STATIC_LIB)
@@ -118,6 +132,21 @@ $(DEP_DIR):
 $(STUB_DIR):
 	@mkdir -p $(STUB_DIR)
 
+$(PIC_OBJ_DIR):
+	@mkdir -p $(PIC_OBJ_DIR)
+
+$(PIC_DEP_DIR):
+	@mkdir -p $(PIC_DEP_DIR)
+
+$(PIC_STUB_DIR):
+	@mkdir -p $(PIC_STUB_DIR)
+
+ifeq ($(USE_MPI),0)
+$(PIC_STUB_TARGET): | $(PIC_STUB_DIR)
+	$(SERIAL_CXX) -O $(PICFLAGS) -c STUBS/mpi.c -o $(PIC_STUB_DIR)/mpi.o
+	$(AR) rs $@ $(PIC_STUB_DIR)/mpi.o
+endif
+
 $(HEADER_STAMP): | $(BUILD_DIR)
 	@bash Make.sh style
 	@bash Make.sh models
@@ -131,16 +160,19 @@ $(STATIC_LIB): $(HEADER_STAMP) $(STUB_TARGET) | $(BUILD_DIR) $(OBJ_DIR) $(DEP_DI
 $(STATIC_LIB): $(LIB_OBJ)
 	$(AR) rs $@ $(LIB_OBJ)
 
-$(SHARED_LIB): CXXFLAGS += $(PICFLAGS)
-$(SHARED_LIB): $(HEADER_STAMP) $(STUB_TARGET) | $(BUILD_DIR) $(OBJ_DIR) $(DEP_DIR) $(STUB_DIR)
-$(SHARED_LIB): $(LIB_OBJ)
-	$(LINK) $(CXXFLAGS) $(SHLIBFLAGS) $(LIB_OBJ) $(LDFLAGS) $(LDLIBS) -o $@
+$(SHARED_LIB): $(HEADER_STAMP) $(PIC_STUB_TARGET) | $(BUILD_DIR) $(PIC_OBJ_DIR) $(PIC_DEP_DIR) $(PIC_STUB_DIR)
+$(SHARED_LIB): $(PIC_LIB_OBJ)
+	$(LINK) $(CXXFLAGS) $(SHLIBFLAGS) $(PIC_LIB_OBJ) $(SHLIB_LDFLAGS) $(LDLIBS) -o $@
 
 $(OBJ_DIR)/%.o: %.cpp $(HEADER_STAMP) $(STUB_TARGET) | $(OBJ_DIR) $(DEP_DIR) $(STUB_DIR)
 	@mkdir -p $(OBJ_DIR) $(DEP_DIR)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MF $(DEP_DIR)/$*.d -c $< -o $@
 
+$(PIC_OBJ_DIR)/%.o: %.cpp $(HEADER_STAMP) $(PIC_STUB_TARGET) | $(PIC_OBJ_DIR) $(PIC_DEP_DIR) $(PIC_STUB_DIR)
+	@mkdir -p $(PIC_OBJ_DIR) $(PIC_DEP_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(PICFLAGS) -MMD -MF $(PIC_DEP_DIR)/$*.d -c $< -o $@
+
 clean:
 	rm -rf $(BUILD_DIR)
 
--include $(DEP)
+-include $(DEP) $(PIC_LIB_DEP)
