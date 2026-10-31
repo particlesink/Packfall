@@ -33,6 +33,14 @@ Examples in python/examples:
   vizplotgui.py
     Qt-based live atom view plus a live compute plot
 
+  fabric_tuner.py
+    Tkinter-based parameter UI for ``mesh/surface/fabric`` conveyor-belt
+    inputs. It loads the selected input through the shared library, lets you
+    apply a new fabric session, run a chosen number of steps, and save a tuned
+    input. It renders the live fabric mesh and DEM particles from isolated STL
+    snapshots and library atom data; drag to orbit and use the mouse wheel to
+    zoom. The head-pulley fabric example is used by default.
+
   in.gui
   in.viz
     input files for the GUI examples
@@ -42,5 +50,15 @@ Run examples from the repository root, for example:
   python python/examples/demo.py
   python python/examples/gui.py python/examples/in.gui 100
   python python/examples/vizplotgui.py python/examples/in.viz 100 thermo_temp
+  python python/examples/fabric_tuner.py
+  python python/examples/fabric_tuner.py examples/fabric_head_pulley/in.fabric_head_pulley
+
+The fabric tuner changes its values when it recreates the fabric fix, so
+``Apply / reload`` starts a fresh session at step zero. This is required by the
+shared library's fabric implementation; ``Run one frame`` and ``Start live``
+advance the library in preview-sized chunks. ``Stop`` takes effect between
+chunks, and ``Save tuned input`` keeps the values in an ordinary Packfall input
+file. Preview snapshots are written to a temporary directory, never to the
+input's normal output location.
 
 To install the wrapper into a Python environment, use python/install.py.
